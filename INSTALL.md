@@ -12,7 +12,7 @@ Send your agent the repository URL and this prompt:
 >
 > Each run must wait for the fresh official arXiv daily batch, ingest the complete batch rather than only keyword-searching, deduplicate it, and then rank papers against my profile. Do not force a paper into every interest category.
 >
-> Assume I may read zero full papers. For every selected paper, explain what the researchers learned, what the field should update, why it connects to me, one useful question I can ask, and what remains unproven. Avoid opening with ingestion statistics or assigning reading quotas.
+> Rewrite the research in language matched to my current understanding, while gently introducing the concepts I need to learn. For every selected paper, explain what the researchers learned, what the field should update, why it connects to me, one useful question I can ask, and what remains unproven. Assume I may read zero full papers at first, but help me build toward understanding and questioning the papers themselves. Avoid opening with ingestion statistics or assigning reading quotas.
 >
 > Persist dated feedback, a cursor recording which discussion turns have already been ingested, a dated-task registry, and an evidence-based knowledge map of papers and concepts I have actually encountered. Before each new run, ingest outstanding feedback from previous daily tasks.
 >

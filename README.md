@@ -1,10 +1,10 @@
 # arXiv Daily Brief
 
-**Read arXiv without having to read arXiv.**
+**arXiv, rewritten in your language—with a conversation attached.**
 
-Every morning, an LLM sweeps the complete new arXiv batch, filters it through what I care about and what I already know, then opens a dated chat containing the few ideas worth thinking about.
+Every morning, an LLM sweeps the complete new arXiv batch, filters it through what I care about and what I already know, then opens a dated chat containing the ideas worth thinking about. I can question the findings, ask for a gentler explanation, connect them to my own work, or follow an idea until I am ready for the paper itself.
 
-The output is not a paper leaderboard or a pile of abstract summaries. It assumes I will probably open zero PDFs. Each selected paper has to tell me:
+The output is not a paper leaderboard or a pile of abstract summaries. It rewrites research in the language of my existing interests and gradually builds the missing foundations. Each selected paper has to tell me:
 
 - what the researchers actually learned;
 - what the relevant field should update its beliefs about;
@@ -12,7 +12,7 @@ The output is not a paper leaderboard or a pile of abstract summaries. It assume
 - a useful question I can ask without reading the paper; and
 - what remains unproven.
 
-The chat becomes the feedback interface. I can say “too much agent research,” “more education and language,” “this connects to my visual testing idea,” or simply keep asking questions. Tomorrow’s brief incorporates that feedback and slowly updates a map of what I have already seen and understood.
+The chat is both the reading interface and the feedback interface. I can say “too much agent research,” “more education and language,” “explain that like I am new to the field,” “this connects to my visual testing idea,” or simply keep asking questions. Tomorrow’s brief incorporates that feedback and slowly updates a map of what I have already seen and understood.
 
 ## Make your own
 
