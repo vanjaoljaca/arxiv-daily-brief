@@ -18,7 +18,7 @@ The chat is both the reading interface and the feedback interface. I can say “
 
 You do not need to install my exact stack. Give this repository to an LLM agent that can browse the web, write files, and schedule recurring work, then tell it to adapt the process to your environment:
 
-> Set up this arXiv daily brief for me using the process in this repository. First interview me about my interests and current knowledge. Then create the persistent profile, feedback history, knowledge map, full-batch arXiv ingestion, daily synthesis, and a dated chat/task for each finished edition. Schedule it only after the fresh arXiv batch is available. Assume I may read zero papers, so the daily brief itself must deliver the useful learning. Keep processing out of the discussion chat.
+> Set up this arXiv daily brief for me using the process in this repository. First interview me about my interests and current knowledge. Then create the persistent profile, feedback history, knowledge map, full-batch arXiv ingestion, daily synthesis, and a dated chat/task for each finished edition. Schedule it only after the fresh arXiv batch is available. Rewrite the research in language matched to my current understanding, let me explore it through conversation, and help me build toward the papers themselves. Keep processing out of the discussion chat.
 
 For a more explicit handoff, use [INSTALL.md](INSTALL.md).
 
