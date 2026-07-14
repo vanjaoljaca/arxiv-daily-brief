@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "ArXiv Daily Brief",
+    name: "Daily Brief",
     short_name: "Daily Brief",
-    description: "Private daily research reading and voice feedback.",
+    description: "Private daily arXiv and Hacker News reading with voice feedback.",
     start_url: "/",
     display: "standalone",
     background_color: "#f4f0e7",

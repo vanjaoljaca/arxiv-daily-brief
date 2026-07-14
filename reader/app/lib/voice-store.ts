@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 
 export type VoiceStatus = "recording" | "waiting" | "ingested";
 export type SessionRow = {
-  id: string; owner_email: string; delivery_date: string; edition_version: string; mime_type: string;
+  id: string; owner_email: string; content_type: "arxiv" | "hn"; delivery_date: string; edition_version: string; mime_type: string;
   started_at: string; finished_at: string | null; duration_ms: number; total_chunks: number;
   total_bytes: number; status: VoiceStatus; ingested_at: string | null;
 };
@@ -21,7 +21,7 @@ async function createSchema() {
   const { DB } = bindings();
   await DB.batch([
     DB.prepare(`CREATE TABLE IF NOT EXISTS voice_sessions (
-      id TEXT PRIMARY KEY NOT NULL, owner_email TEXT NOT NULL, delivery_date TEXT NOT NULL,
+      id TEXT PRIMARY KEY NOT NULL, owner_email TEXT NOT NULL, content_type TEXT NOT NULL DEFAULT 'arxiv', delivery_date TEXT NOT NULL,
       edition_version TEXT NOT NULL, mime_type TEXT NOT NULL, started_at TEXT NOT NULL,
       finished_at TEXT, duration_ms INTEGER NOT NULL DEFAULT 0, total_chunks INTEGER NOT NULL DEFAULT 0,
       total_bytes INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'recording', ingested_at TEXT
@@ -32,8 +32,10 @@ async function createSchema() {
       PRIMARY KEY(session_id, chunk_index), FOREIGN KEY(session_id) REFERENCES voice_sessions(id) ON DELETE CASCADE
     )`),
     DB.prepare("CREATE INDEX IF NOT EXISTS voice_sessions_queue_idx ON voice_sessions(status, finished_at)"),
-    DB.prepare("CREATE INDEX IF NOT EXISTS voice_sessions_edition_idx ON voice_sessions(owner_email, delivery_date, edition_version, started_at)"),
   ]);
+  const columns = await DB.prepare("PRAGMA table_info(voice_sessions)").all<{ name: string }>();
+  if (!columns.results.some((column) => column.name === "content_type")) await DB.prepare("ALTER TABLE voice_sessions ADD COLUMN content_type TEXT NOT NULL DEFAULT 'arxiv'").run();
+  await DB.prepare("CREATE INDEX IF NOT EXISTS voice_sessions_content_edition_idx ON voice_sessions(owner_email, content_type, delivery_date, edition_version, started_at)").run();
 }
 
 export async function getSession(id: string) {

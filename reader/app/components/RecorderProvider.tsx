@@ -4,9 +4,10 @@ import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 type Phase = "idle" | "starting" | "recording" | "finishing" | "waiting" | "ingested" | "interrupted" | "error";
+type ContentType = "arxiv" | "hn";
 type PendingChunk = { index: number; blob: Blob };
-type SessionMeta = { id: string; deliveryDate: string; editionVersion: string; mimeType: string; startedAt: number };
-type SessionStatusResponse = { id?: string; status: "recording" | "waiting" | "ingested" | null; deliveryDate?: string; editionVersion?: string; mimeType?: string; startedAt?: string; totalChunks?: number };
+type SessionMeta = { id: string; contentType: ContentType; deliveryDate: string; editionVersion: string; mimeType: string; startedAt: number };
+type SessionStatusResponse = { id?: string; status: "recording" | "waiting" | "ingested" | null; contentType?: ContentType; deliveryDate?: string; editionVersion?: string; mimeType?: string; startedAt?: string; totalChunks?: number };
 type RecorderContextValue = { active: boolean };
 
 const RecorderContext = createContext<RecorderContextValue>({ active: false });
@@ -56,8 +57,10 @@ async function loadChunks(sessionId: string): Promise<PendingChunk[]> {
 export function RecorderProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const edition = useMemo(() => {
-    const match = pathname.match(/^\/edition\/(\d{4}-\d{2}-\d{2})\/(v\d+)$/);
-    return match ? { deliveryDate: match[1], editionVersion: match[2] } : null;
+    const hnMatch = pathname.match(/^\/hn\/edition\/(\d{4}-\d{2}-\d{2})\/(v\d+)$/);
+    if (hnMatch) return { contentType: "hn" as const, deliveryDate: hnMatch[1], editionVersion: hnMatch[2] };
+    const arxivMatch = pathname.match(/^\/edition\/(\d{4}-\d{2}-\d{2})\/(v\d+)$/);
+    return arxivMatch ? { contentType: "arxiv" as const, deliveryDate: arxivMatch[1], editionVersion: arxivMatch[2] } : null;
   }, [pathname]);
   const [phase, setPhase] = useState<Phase>("idle");
   const [elapsed, setElapsed] = useState(0);
@@ -106,7 +109,8 @@ export function RecorderProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem(ACTIVE_SESSION_KEY);
     if (!saved) return;
     try {
-      const meta = JSON.parse(saved) as SessionMeta;
+      const parsed = JSON.parse(saved) as Partial<SessionMeta> & Omit<SessionMeta, "contentType">;
+      const meta = { ...parsed, contentType: parsed.contentType === "hn" ? "hn" as const : "arxiv" as const } as SessionMeta;
       sessionRef.current = meta;
       fetch(`/api/voice/sessions?session=${encodeURIComponent(meta.id)}`)
         .then((response) => response.ok ? response.json() as Promise<SessionStatusResponse> : null)
@@ -128,12 +132,12 @@ export function RecorderProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!edition || phase !== "idle") return;
-    fetch(`/api/voice/sessions?date=${edition.deliveryDate}&version=${edition.editionVersion}`)
+    fetch(`/api/voice/sessions?content=${edition.contentType}&date=${edition.deliveryDate}&version=${edition.editionVersion}`)
       .then((response) => response.ok ? response.json() as Promise<SessionStatusResponse> : null)
       .then((data) => {
         if (data?.status === "recording") {
           if (!data.id || !data.deliveryDate || !data.editionVersion || !data.mimeType || !data.startedAt) return;
-          const meta = { id: data.id, deliveryDate: data.deliveryDate, editionVersion: data.editionVersion, mimeType: data.mimeType, startedAt: Date.parse(data.startedAt) };
+          const meta = { id: data.id, contentType: data.contentType === "hn" ? "hn" as const : "arxiv" as const, deliveryDate: data.deliveryDate, editionVersion: data.editionVersion, mimeType: data.mimeType, startedAt: Date.parse(data.startedAt) };
           persistSession(meta); setPhase("interrupted"); setMessage(`${data.totalChunks || 0} chunks`);
         } else if (data?.status === "ingested") { setPhase("ingested"); setMessage("Ingested"); }
         else if (data?.status === "waiting") { setPhase("waiting"); setMessage("Pending"); }
@@ -160,7 +164,7 @@ export function RecorderProvider({ children }: { children: React.ReactNode }) {
       const anchor = (event.target as Element | null)?.closest("a");
       if (!anchor?.href) return;
       const url = new URL(anchor.href, window.location.href);
-      const internalRoute = url.origin === window.location.origin && (/^\/$/.test(url.pathname) || /^\/archive\/?$/.test(url.pathname) || /^\/edition\//.test(url.pathname));
+      const internalRoute = url.origin === window.location.origin && (/^\/$/.test(url.pathname) || /^\/archive\/?$/.test(url.pathname) || /^\/edition\//.test(url.pathname) || /^\/hn(?:\/|$)/.test(url.pathname));
       if (internalRoute) return;
       event.preventDefault();
       setWarning("Leaving may stop recording. Uploaded audio is safe.");
@@ -241,7 +245,7 @@ export function RecorderProvider({ children }: { children: React.ReactNode }) {
   const time = `${String(Math.floor(elapsed / 60)).padStart(2, "0")}:${String(elapsed % 60).padStart(2, "0")}`;
   const showDock = Boolean(edition) || phase !== "idle";
   const status = phase === "recording" ? message : phase === "finishing" ? "Uploading" : phase === "waiting" ? "Pending" : phase === "ingested" ? "Ingested" : phase === "interrupted" ? "Interrupted" : phase === "error" ? "Error" : phase === "starting" ? "Mic" : "Ready";
-  const provenance = sessionMeta ? `${sessionMeta.deliveryDate} · ${sessionMeta.editionVersion}` : "";
+  const provenance = sessionMeta ? `${sessionMeta.contentType === "hn" ? "HN" : "arXiv"} · ${sessionMeta.deliveryDate} · ${sessionMeta.editionVersion}` : edition ? `${edition.contentType === "hn" ? "HN" : "arXiv"} · ${edition.deliveryDate} · ${edition.editionVersion}` : "";
   return <RecorderContext.Provider value={{ active }}>
     {children}
     {warning && active ? <aside className="recording-warning" role="alert">{warning}<button onClick={() => setWarning(null)} aria-label="Dismiss recording warning">×</button></aside> : null}

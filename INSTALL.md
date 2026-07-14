@@ -12,7 +12,10 @@ feedback/YYYY-MM-DD.md
 state/feedback-cursor.json
 state/daily-tasks.json
 state/knowledge-map.md
+state/hn-cursor.json
+state/hn-publication.json
 runs/YYYY-MM-DD/reading-brief.md
+runs/hn/YYYY-MM-DD/edition-v1.json
 ```
 
 Large reproducible feed downloads should stay ignored. Keep the compact run summary and completed versioned editions.
@@ -50,7 +53,25 @@ The sample `reader/generated/editions.ts` shows the runtime catalogue contract. 
 
 When a correction is produced, retain `v1`, add `v2`, and mark only the canonical saved edition current. Home redirects to the newest current edition; Archive exposes every version.
 
-## 4. Connect the laptop audio inbox
+## 4. Add the optional HN edition
+
+Fetch and prepare a reproducible candidate set from the official HN API:
+
+```bash
+node scripts/hn/fetch-hn-daily.mjs 2026-07-14
+node scripts/hn/prepare-hn-edition.mjs 2026-07-14
+```
+
+Review the candidate comments, write `runs/hn/2026-07-14/editorial-v1.json`, then assemble and publish it:
+
+```bash
+node scripts/hn/assemble-hn-edition.mjs 2026-07-14 v1
+node scripts/publish-hn-content.mjs
+```
+
+Every selected headline needs a terse summary and 3–4 distinct paraphrased comment perspectives. Keep source and HN discussion URLs, item id, points, comments, timestamp, and version history. See [docs/HN.md](docs/HN.md).
+
+## 5. Connect the laptop audio inbox
 
 Copy `reader/.env.example` to `reader/.env.ingestion.local`, fill it locally, then run:
 
@@ -58,17 +79,17 @@ Copy `reader/.env.example` to `reader/.env.ingestion.local`, fill it locally, th
 node scripts/download-voice-inbox.mjs --include-incomplete
 ```
 
-The script lists protected queue sessions, skips deployment-verifier memos, downloads chunks in numeric order, checks every byte count and SHA-256 hash, and writes an immutable package under `feedback/audio-inbox/<date>/<version>/<session-id>/`. It does not acknowledge ingestion unless `--ack` is supplied after the local package verifies.
+The script lists protected queue sessions, skips deployment-verifier memos, downloads chunks in numeric order, checks every byte count and SHA-256 hash, and writes an immutable package. arXiv retains `feedback/audio-inbox/<date>/<version>/<session-id>/`; HN uses `feedback/audio-inbox/hn/<date>/<version>/<session-id>/`. It does not acknowledge ingestion unless `--ack` is supplied after the local package verifies.
 
 Run transcription and interpretation in a separate local task. Preserve raw chunks and provenance. See [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
-## 5. Verify the real product flow
+## 6. Verify the real product flow
 
 On an iPad or Safari-compatible test device:
 
 1. Start a memo on today's edition.
 2. Navigate to Archive and another edition using in-app links.
-3. Confirm the same red recording bar and timer remain visible.
+3. Switch between arXiv and HN and confirm the same top recording bar and timer remain visible.
 4. Return and Finish.
 5. Confirm one session appears in the protected queue and round-trips byte-for-byte.
 6. Start a second test, close the page after at least one uploaded chunk, and confirm the stale session can be server-finalized and downloaded as interrupted.

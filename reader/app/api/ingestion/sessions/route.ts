@@ -1,6 +1,6 @@
 import { authorizedIngestion, bindings, ensureVoiceSchema, getChunks, jsonError, type SessionRow } from "../../../lib/voice-store";
 
-const API_REVISION = "voice-recovery-v2";
+const API_REVISION = "voice-recovery-v3";
 
 export async function GET(request: Request) {
   if (!authorizedIngestion(request)) return jsonError("Unauthorized", 401);
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     const chunks = await getChunks(session.id);
     const uploadedBytes = chunks.reduce((sum, chunk) => sum + chunk.bytes, 0);
     return {
-      id: session.id, deliveryDate: session.delivery_date, editionVersion: session.edition_version,
+      id: session.id, contentType: session.content_type, deliveryDate: session.delivery_date, editionVersion: session.edition_version,
       mimeType: session.mime_type, startedAt: session.started_at, finishedAt: session.finished_at,
       durationMs: session.duration_ms, totalChunks: session.status === "recording" ? chunks.length : session.total_chunks,
       totalBytes: session.status === "recording" ? uploadedBytes : session.total_bytes,

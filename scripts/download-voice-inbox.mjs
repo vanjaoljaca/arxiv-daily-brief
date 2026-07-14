@@ -24,11 +24,14 @@ if (config.SITES_SIWC_BYPASS_TOKEN) headers["OAI-Sites-Authorization"] = `Bearer
 const response = await fetch(`${baseUrl}/api/ingestion/sessions${includeIncomplete ? "?include_incomplete=1" : ""}`, { headers });
 if (!response.ok) throw new Error(`Queue request failed (${response.status})`);
 const queue = await response.json();
-if (queue.apiRevision !== "voice-recovery-v2") throw new Error(`Unexpected recovery API revision: ${queue.apiRevision || "none"}`);
+if (queue.apiRevision !== "voice-recovery-v3") throw new Error(`Unexpected recovery API revision: ${queue.apiRevision || "none"}`);
 
 for (const session of queue.sessions) {
   if (session.source === "deployment-verifier") continue;
-  const target = path.join(root, "feedback", "audio-inbox", session.deliveryDate, session.editionVersion, session.id);
+  const contentType = session.contentType === "hn" ? "hn" : "arxiv";
+  const target = contentType === "arxiv"
+    ? path.join(root, "feedback", "audio-inbox", session.deliveryDate, session.editionVersion, session.id)
+    : path.join(root, "feedback", "audio-inbox", contentType, session.deliveryDate, session.editionVersion, session.id);
   await mkdir(target, { recursive: true });
   const verifiedChunks = [];
 
@@ -51,7 +54,7 @@ for (const session of queue.sessions) {
   const packageState = { ...session, downloadedAt: new Date().toISOString(), verified: true, verifiedBytes, verifiedChunks };
   await writeFile(path.join(target, "session.json"), `${JSON.stringify(packageState, null, 2)}\n`);
   await writeFile(path.join(target, "recovery-verification.json"), `${JSON.stringify({ sessionId: session.id, chunkCount: verifiedChunks.length, verifiedBytes, chunks: verifiedChunks }, null, 2)}\n`);
-  await writeFile(path.join(target, "handoff.json"), `${JSON.stringify({ sessionId: session.id, deliveryDate: session.deliveryDate, editionVersion: session.editionVersion, sourceStatus: session.status, chunkCount: verifiedChunks.length, totalBytes: verifiedBytes, recommendedOrder: verifiedChunks.map((chunk) => chunk.filename) }, null, 2)}\n`);
+  await writeFile(path.join(target, "handoff.json"), `${JSON.stringify({ sessionId: session.id, contentType, deliveryDate: session.deliveryDate, editionVersion: session.editionVersion, sourceStatus: session.status, chunkCount: verifiedChunks.length, totalBytes: verifiedBytes, recommendedOrder: verifiedChunks.map((chunk) => chunk.filename) }, null, 2)}\n`);
 
   if (acknowledge && session.status === "waiting") {
     const ack = await fetch(`${baseUrl}/api/ingestion/sessions/${session.id}/ack`, { method: "POST", headers });

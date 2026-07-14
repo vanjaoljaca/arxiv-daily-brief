@@ -8,11 +8,11 @@ export async function generateMetadata(): Promise<Metadata> {
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost";
   const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const origin = `${protocol}://${host}`;
-  const description = "A private, calm daily research reader with one voice memo per edition.";
+  const description = "A private daily arXiv and Hacker News reader with one voice memo per edition.";
   return {
-    title: { default: "ArXiv Daily Brief", template: "%s · ArXiv Daily Brief" },
+    title: { default: "Daily Brief", template: "%s · Daily Brief" },
     description,
-    applicationName: "ArXiv Daily Brief",
+    applicationName: "Daily Brief",
     manifest: "/manifest.webmanifest",
     appleWebApp: { capable: true, statusBarStyle: "default", title: "Daily Brief" },
     formatDetection: { telephone: false },
@@ -20,8 +20,8 @@ export async function generateMetadata(): Promise<Metadata> {
       icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
       apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
     },
-    openGraph: { title: "ArXiv Daily Brief", description, type: "website", url: origin, images: [{ url: `${origin}/og.png`, width: 1730, height: 909, alt: "ArXiv Daily Brief — Read deeply. Leave one voice memo." }] },
-    twitter: { card: "summary_large_image", title: "ArXiv Daily Brief", description, images: [`${origin}/og.png`] },
+    openGraph: { title: "Daily Brief", description, type: "website", url: origin, images: [{ url: `${origin}/og.png`, width: 1730, height: 909, alt: "Daily Brief" }] },
+    twitter: { card: "summary_large_image", title: "Daily Brief", description, images: [`${origin}/og.png`] },
   };
 }
 

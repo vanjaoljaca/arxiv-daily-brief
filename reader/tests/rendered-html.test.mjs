@@ -3,12 +3,15 @@ import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("keeps the reader sign-in gated", async () => {
-  const [home, archive, edition] = await Promise.all([
+  const [home, archive, edition, hnHome, hnArchive, hnEdition] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/archive/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/edition/[date]/[version]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/hn/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/hn/archive/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/hn/edition/[date]/[version]/page.tsx", import.meta.url), "utf8"),
   ]);
-  for (const source of [home, archive, edition]) assert.match(source, /requireChatGPTUser/);
+  for (const source of [home, archive, edition, hnHome, hnArchive, hnEdition]) assert.match(source, /requireChatGPTUser/);
 });
 
 test("rejects anonymous voice writes before storage access", async () => {
@@ -28,6 +31,8 @@ test("protects the deployment storage verification route with the ingestion secr
   assert.match(source, /authorizedIngestion/);
   assert.match(source, /Unauthorized/);
   assert.match(source, /deployment-verifier@local/);
+  assert.match(source, /x-content-type/);
+  assert.match(source, /content_type/);
 });
 
 test("allows secret-protected recovery of interrupted session chunks", async () => {
@@ -38,7 +43,7 @@ test("allows secret-protected recovery of interrupted session chunks", async () 
   assert.match(queue, /include_incomplete/);
   assert.match(queue, /include_all/);
   assert.match(queue, /deployment-verifier/);
-  assert.match(queue, /voice-recovery-v2/);
+  assert.match(queue, /voice-recovery-v3/);
   assert.match(queue, /status IN \('waiting', 'recording'\)/);
   assert.doesNotMatch(chunks, /session\.status === "recording"/);
 });
@@ -99,6 +104,40 @@ test("owns one recorder above all internal routes with durable interruption reco
   assert.match(provider, /dataTasksRef/);
   assert.match(provider, /unexpectedStop/);
   assert.match(header, /from "next\/link"/);
+});
+
+test("ships separate arXiv and HN tabs, archives, and a structured HN sample", async () => {
+  const [header, catalogue, page] = await Promise.all([
+    readFile(new URL("../app/components/SiteHeader.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../generated/hn-editions.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/hn/edition/[date]/[version]/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(header, />arXiv<\/Link>/);
+  assert.match(header, />HN<\/Link>/);
+  assert.match(catalogue, /contentType: "hn"/);
+  assert.match(catalogue, /rank: 3/);
+  assert.match(page, /story\.url/);
+  assert.match(page, /story\.discussionUrl/);
+  assert.match(page, /Comment pulse/);
+  assert.match(page, /Comment dives/);
+});
+
+test("keeps the recorder at the top with content-type provenance", async () => {
+  const [css, provider, create, chunk, queue] = await Promise.all([
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/RecorderProvider.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/voice/sessions/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/voice/sessions/[id]/chunks/[index]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/ingestion/sessions/route.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(css, /\.recorder-dock \{ position: fixed;[^}]*top:/s);
+  const recorderRule = css.match(/\.recorder-dock \{([^}]*)\}/s)?.[1] || "";
+  assert.doesNotMatch(recorderRule, /(?:^|;)\s*bottom\s*:/);
+  assert.match(provider, /contentType: "hn"/);
+  assert.match(provider, /contentType: "arxiv"/);
+  assert.match(create, /content_type/);
+  assert.match(chunk, /session\.content_type/);
+  assert.match(queue, /contentType: session\.content_type/);
 });
 
 test("exposes authenticated user and server recovery finalizers", async () => {

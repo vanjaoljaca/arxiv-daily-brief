@@ -4,11 +4,11 @@
 
 This project sweeps the complete daily arXiv announcement batch, filters it through a reader's interests and actual knowledge, and publishes a calm private edition that is comfortable to read on an iPad. It is arXiv-specific: the goal is not generic internet ingestion or avoiding papers. It is to make unfamiliar research discussable now, while building the foundations and questions that help a reader approach the papers themselves.
 
-The repository now includes the working Sites reader product, not just the editorial recipe:
+The repository now includes the working Sites reader product, not just the editorial recipe. arXiv remains the core supported-reading workflow; an optional Hacker News surface adds a broader daily headline and discussion scan without mixing the two publication streams:
 
-- a sign-in-gated, iPad-first reading app with Home and Archive routes;
+- a sign-in-gated, iPad-first reading app with first-class **arXiv** and **HN** tabs and separate archives;
 - immutable dated versions, so corrections never overwrite reading history;
-- one edition-level voice memo that keeps recording across internal navigation;
+- one edition-level voice memo, visible at the top, that keeps recording across both tabs and internal navigation;
 - 10-second chunk uploads to private R2, with session/status metadata in D1;
 - local IndexedDB buffering for network wobble and visible interruption recovery;
 - leave-app warnings plus recoverable server-side finalization for abandoned sessions;
@@ -41,6 +41,8 @@ flowchart LR
 
 The reader deliberately stops at the verified raw-audio handoff. A separate daily process owns local/free transcription, feedback interpretation, preference and knowledge updates, and any user-facing Feedback task. This keeps deployment code away from private interpretation state.
 
+HN uses a parallel source path: official Firebase HN items → interest-aware ordering with a broad long tail → terse headline summaries and attributed Comment pulse bullets → selective Comment dives. HN has its own runs and publication cursor; it does not run inside the arXiv batch.
+
 ## Try your own instance
 
 See [INSTALL.md](INSTALL.md) for the complete setup. The shortest route is:
@@ -68,7 +70,10 @@ The complete sweep matters. Keyword alerts find more of what you already know ho
 ## Repository map
 
 - `reader/` — deployable Sites source for the private iPad reader and voice bridge.
+- `scripts/hn/` — official-API fetch, ranking draft, and edition assembly.
+- `scripts/publish-hn-content.mjs` — publishes completed versioned HN runs into the reader catalogue.
 - `scripts/download-voice-inbox.mjs` — protected, hash-verifying laptop downloader.
+- `docs/HN.md` — HN data contract, daily process, and scheduling boundary.
 - `docs/OPERATIONS.md` — storage, recovery, security, and feedback-task boundaries.
 - `examples/` — selected public edition excerpts.
 - `MY-FEED.md` — one public example of a reader filter.

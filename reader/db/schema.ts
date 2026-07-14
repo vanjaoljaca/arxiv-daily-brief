@@ -3,6 +3,7 @@ import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlit
 export const voiceSessions = sqliteTable("voice_sessions", {
   id: text("id").primaryKey(),
   ownerEmail: text("owner_email").notNull(),
+  contentType: text("content_type", { enum: ["arxiv", "hn"] }).notNull().default("arxiv"),
   deliveryDate: text("delivery_date").notNull(),
   editionVersion: text("edition_version").notNull(),
   mimeType: text("mime_type").notNull(),
@@ -15,7 +16,7 @@ export const voiceSessions = sqliteTable("voice_sessions", {
   ingestedAt: text("ingested_at"),
 }, (table) => [
   index("voice_sessions_queue_idx").on(table.status, table.finishedAt),
-  index("voice_sessions_edition_idx").on(table.ownerEmail, table.deliveryDate, table.editionVersion, table.startedAt),
+  index("voice_sessions_edition_idx").on(table.ownerEmail, table.contentType, table.deliveryDate, table.editionVersion, table.startedAt),
 ]);
 
 export const voiceChunks = sqliteTable("voice_chunks", {

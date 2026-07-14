@@ -12,7 +12,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   if (session.status !== "recording") return jsonError("Session already finished", 409);
   const bytes = await request.arrayBuffer();
   if (!bytes.byteLength || bytes.byteLength > 8_000_000) return jsonError("Invalid chunk size", 413);
-  const key = `voice/${session.delivery_date}/${session.edition_version}/${id}/${String(index).padStart(6, "0")}`;
+  const key = `voice/${session.content_type}/${session.delivery_date}/${session.edition_version}/${id}/${String(index).padStart(6, "0")}`;
   const { DB, AUDIO } = bindings();
   await AUDIO.put(key, bytes, { httpMetadata: { contentType: request.headers.get("content-type") || session.mime_type } });
   await ensureVoiceSchema();
