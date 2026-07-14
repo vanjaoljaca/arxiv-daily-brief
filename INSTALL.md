@@ -1,66 +1,76 @@
 # Install your own arXiv Daily Brief
 
-The easiest installation method is to hand this repository to the LLM agent you already use. It should have internet access, a writable project folder, and some way to schedule recurring work and create a dated chat or task.
+You need Node.js 22.13 or newer, a Sites-capable Codex environment, and an agent that can fetch the official arXiv daily batch and write versioned Markdown editions.
 
-## One-prompt setup
+## 1. Establish the editorial state
 
-Send your agent the repository URL and this prompt:
-
-> Build me a personal daily arXiv briefing based on this repository. Do the setup work, not today's research synthesis, in this chat. Create a separate processing task for ingestion and synthesis, and create a fresh dated task containing the completed brief each day.
->
-> Start by asking me only what is necessary to establish my initial interests, existing knowledge, preferred level of explanation, and wake-up deadline. Persist that as an editable reader profile.
->
-> Each run must wait for the fresh official arXiv daily batch, ingest the complete batch rather than only keyword-searching, deduplicate it, and then rank papers against my profile. Do not force a paper into every interest category.
->
-> Rewrite the research in language matched to my current understanding, while gently introducing the concepts I need to learn. For every selected paper, explain what the researchers learned, what the field should update, why it connects to me, one useful question I can ask, and what remains unproven. Assume I may read zero full papers at first, but help me build toward understanding and questioning the papers themselves. Avoid opening with ingestion statistics or assigning reading quotas.
->
-> Persist dated feedback, a cursor recording which discussion turns have already been ingested, a dated-task registry, and an evidence-based knowledge map of papers and concepts I have actually encountered. Before each new run, ingest outstanding feedback from previous daily tasks.
->
-> Keep raw processing out of the daily reading task. The daily task should contain the complete finished presentation inline, not merely a link to a file. Keep the setup/discussion task as the place where we change the process.
->
-> Create a safe test run first. Only activate the recurring schedule after the test edition has been verified end to end.
-
-## Files your agent should create
-
-The exact format is flexible, but a simple Markdown-first instance should contain:
+Ask only what is needed to establish initial interests, current knowledge, preferred explanation level, and delivery deadline. Persist editable Markdown/JSON state outside the public reader source:
 
 ```text
-context/
-  reader-profile.md
-feedback/
-  YYYY-MM-DD.md
-state/
-  feedback-cursor.json
-  daily-tasks.json
-  knowledge-map.md
-runs/
-  YYYY-MM-DD/
-    summary.json
-    reading-brief.md
+context/reader-profile.md
+feedback/YYYY-MM-DD.md
+state/feedback-cursor.json
+state/daily-tasks.json
+state/knowledge-map.md
+runs/YYYY-MM-DD/reading-brief.md
 ```
 
-Large reproducible feed downloads should normally be ignored by Git. Keep the compact run summary and finished edition; refetch raw source material when necessary.
+Large reproducible feed downloads should stay ignored. Keep the compact run summary and completed versioned editions.
 
-## Questions the setup interview should answer
+## 2. Configure the reader
 
-- Which fields or problems reliably catch your attention?
-- Which adjacent areas should be explored occasionally?
-- What do you already understand, and what terminology needs gentle introduction?
-- What makes a research summary feel boring, useful, or magnetic to you?
-- When must the finished edition be waiting for you?
-- Where should the dated brief appear?
+`reader/.openai/hosting.json` declares logical D1 and R2 bindings without a private project ID:
 
-Do not over-design the first profile. The point of the feedback loop is that the filter becomes more accurate through use.
+```json
+{ "d1": "DB", "r2": "AUDIO" }
+```
 
-## A good first-run check
+Create a long random ingestion secret, for example with `openssl rand -hex 32`. Store it as `SITES_INGESTION_SECRET` in hosted runtime configuration. Put the same value and the deployed private URL in an ignored local file based on `reader/.env.example`. Never commit the generated secret or a Sites bypass token.
 
-Before trusting the schedule, verify that the system:
+Set the Sites access policy to one explicitly allowed owner and no groups. SIWC protects browser routes, while every voice and ingestion route also performs server-side authorization.
 
-1. waited for and ingested the intended arXiv batch;
-2. considered the complete batch rather than a preselected AI-only slice;
-3. produced a genuinely personal, readable edition;
-4. opened the dated task and presented the entire brief inline;
-5. captured feedback from that task for the next run; and
-6. preserved the original edition when feedback triggered a same-day rewrite.
+From `reader/`:
 
-Once that loop works, the daily brief can gradually become both a research radar and a record of how your interests and foundations develop.
+```bash
+npm install
+npm test
+npm run lint
+npx tsc --noEmit
+```
+
+Deploy only after the build succeeds and owner-only access is verified.
+
+## 3. Publish editions without overwriting history
+
+The sample `reader/generated/editions.ts` shows the runtime catalogue contract. Your daily publisher should transform completed Markdown from `runs/` into entries shaped like:
+
+```ts
+{ date: "2026-07-14", version: "v1", current: true, title: "Today’s useful questions", markdown: "# …" }
+```
+
+When a correction is produced, retain `v1`, add `v2`, and mark only the canonical saved edition current. Home redirects to the newest current edition; Archive exposes every version.
+
+## 4. Connect the laptop audio inbox
+
+Copy `reader/.env.example` to `reader/.env.ingestion.local`, fill it locally, then run:
+
+```bash
+node scripts/download-voice-inbox.mjs --include-incomplete
+```
+
+The script lists protected queue sessions, skips deployment-verifier memos, downloads chunks in numeric order, checks every byte count and SHA-256 hash, and writes an immutable package under `feedback/audio-inbox/<date>/<version>/<session-id>/`. It does not acknowledge ingestion unless `--ack` is supplied after the local package verifies.
+
+Run transcription and interpretation in a separate local task. Preserve raw chunks and provenance. See [docs/OPERATIONS.md](docs/OPERATIONS.md).
+
+## 5. Verify the real product flow
+
+On an iPad or Safari-compatible test device:
+
+1. Start a memo on today's edition.
+2. Navigate to Archive and another edition using in-app links.
+3. Confirm the same red recording bar and timer remain visible.
+4. Return and Finish.
+5. Confirm one session appears in the protected queue and round-trips byte-for-byte.
+6. Start a second test, close the page after at least one uploaded chunk, and confirm the stale session can be server-finalized and downloaded as interrupted.
+
+Add the private URL to the iPad Home Screen from Safari for standalone presentation.
