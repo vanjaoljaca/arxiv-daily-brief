@@ -19,7 +19,7 @@ export default async function EditionPage({ params }: { params: Promise<{ date: 
     <main className="reader-shell">
       <div className="reader-meta">
         <div>
-          <p className="eyebrow">{edition.current ? "Current edition" : "Saved edition"}</p>
+          <p className="eyebrow">{edition.current ? "Current" : "Saved"}</p>
           <h1 className="date-title">{new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`))}</h1>
         </div>
         <nav className="version-links" aria-label="Edition versions">
@@ -27,7 +27,7 @@ export default async function EditionPage({ params }: { params: Promise<{ date: 
         </nav>
       </div>
       <article className="article">
-        <ReactMarkdown components={{ a: ({ children, ...props }) => <a {...props} target="_blank" rel="noreferrer">{children}</a> }}>{edition.markdown}</ReactMarkdown>
+        <ReactMarkdown components={{ h1: () => null, a: ({ children, ...props }) => <a {...props} target="_blank" rel="noreferrer">{children}</a> }}>{edition.markdown}</ReactMarkdown>
       </article>
     </main>
   </>;

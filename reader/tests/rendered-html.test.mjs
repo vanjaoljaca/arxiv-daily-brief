@@ -54,6 +54,20 @@ test("publishes a newest sample and preserves both prior versions", async () => 
   assert.doesNotMatch(source, /codex-preview/);
 });
 
+test("keeps recurring reader copy terse", async () => {
+  const [catalogue, archive, edition, recorder] = await Promise.all([
+    readFile(new URL("../generated/editions.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/archive/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/edition/[date]/[version]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/RecorderProvider.tsx", import.meta.url), "utf8"),
+  ]);
+  const visibleSource = [catalogue, archive, edition, recorder].join("\n");
+  for (const banned of [/What(?:’|')s Worth Reviewing Today/i, /The one-minute overview/i, /ELI5 idea/i, /Current edition/i, /Saved edition/i, /Every saved edition/i, /Start reading \/ record/i, /One memo for this whole edition/i, /Save recovered memo/i]) assert.doesNotMatch(visibleSource, banned);
+  assert.match(edition, /h1: \(\) => null/);
+  assert.match(recorder, />Record<\/button>/);
+  assert.match(recorder, /aria-label="Start daily voice memo"/);
+});
+
 test("ships installable app and social assets", async () => {
   await Promise.all([
     access(new URL("../public/icon-192.png", import.meta.url)),
@@ -81,7 +95,7 @@ test("owns one recorder above all internal routes with durable interruption reco
   assert.match(provider, /sendBeacon/);
   assert.match(provider, /visibilitychange/);
   assert.match(provider, /window\.confirm/);
-  assert.match(provider, /Save recovered memo/);
+  assert.match(provider, />Save<\/button>/);
   assert.match(provider, /dataTasksRef/);
   assert.match(provider, /unexpectedStop/);
   assert.match(header, /from "next\/link"/);

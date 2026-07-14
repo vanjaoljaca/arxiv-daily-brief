@@ -61,7 +61,7 @@ export function RecorderProvider({ children }: { children: React.ReactNode }) {
   }, [pathname]);
   const [phase, setPhase] = useState<Phase>("idle");
   const [elapsed, setElapsed] = useState(0);
-  const [message, setMessage] = useState("One memo for this whole edition");
+  const [message, setMessage] = useState("Ready");
   const [warning, setWarning] = useState<string | null>(null);
   const [sessionMeta, setSessionMeta] = useState<SessionMeta | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -92,9 +92,9 @@ export function RecorderProvider({ children }: { children: React.ReactNode }) {
         if (!response.ok) throw new Error("upload failed");
         queueRef.current.shift();
         await removeChunk(sessionRef.current.id, item.index);
-        setMessage(queueRef.current.length ? `Recording · ${queueRef.current.length} saved chunk waiting` : "Recording · Every chunk uploaded safely");
+        setMessage(queueRef.current.length ? `Uploading · ${queueRef.current.length}` : "Saved");
       } catch {
-        setMessage("Recording continues · Saved locally and reconnecting…");
+        setMessage("Offline · saved");
         await new Promise((resolve) => window.setTimeout(resolve, 3000));
       }
     }
@@ -117,12 +117,12 @@ export function RecorderProvider({ children }: { children: React.ReactNode }) {
             queueRef.current = await loadChunks(meta.id);
             nextIndexRef.current = Math.max(data.totalChunks || 0, ...queueRef.current.map((chunk) => chunk.index + 1), 0);
             if (queueRef.current.length) await drainQueue();
-            setPhase("interrupted"); setMessage(`${data.totalChunks || 0} uploaded chunks are safe · Save the recovered memo`);
+            setPhase("interrupted"); setMessage(`${data.totalChunks || 0} chunks`);
           } else {
             persistSession(null); setPhase(data.status === "ingested" ? "ingested" : "waiting");
-            setMessage(data.status === "ingested" ? "Ingested on your laptop" : "Uploaded · Waiting for laptop ingestion");
+            setMessage(data.status === "ingested" ? "Ingested" : "Pending");
           }
-        }).catch(() => { setSessionMeta(meta); setPhase("interrupted"); setMessage("Previous memo may be interrupted · Checking saved audio"); });
+        }).catch(() => { setSessionMeta(meta); setPhase("interrupted"); setMessage("Checking"); });
     } catch { localStorage.removeItem(ACTIVE_SESSION_KEY); }
   }, [drainQueue]);
 
@@ -134,9 +134,9 @@ export function RecorderProvider({ children }: { children: React.ReactNode }) {
         if (data?.status === "recording") {
           if (!data.id || !data.deliveryDate || !data.editionVersion || !data.mimeType || !data.startedAt) return;
           const meta = { id: data.id, deliveryDate: data.deliveryDate, editionVersion: data.editionVersion, mimeType: data.mimeType, startedAt: Date.parse(data.startedAt) };
-          persistSession(meta); setPhase("interrupted"); setMessage(`${data.totalChunks || 0} uploaded chunks are safe · Save the recovered memo`);
-        } else if (data?.status === "ingested") { setPhase("ingested"); setMessage("Ingested on your laptop"); }
-        else if (data?.status === "waiting") { setPhase("waiting"); setMessage("Uploaded · Waiting for laptop ingestion"); }
+          persistSession(meta); setPhase("interrupted"); setMessage(`${data.totalChunks || 0} chunks`);
+        } else if (data?.status === "ingested") { setPhase("ingested"); setMessage("Ingested"); }
+        else if (data?.status === "waiting") { setPhase("waiting"); setMessage("Pending"); }
       }).catch(() => {});
   }, [edition, phase]);
 
@@ -154,7 +154,7 @@ export function RecorderProvider({ children }: { children: React.ReactNode }) {
       try { recorderRef.current?.requestData(); } catch {}
       navigator.sendBeacon(`/api/voice/sessions/${sessionRef.current.id}/recover`);
     };
-    const visibility = () => { if (active && document.hidden) setWarning("Leaving Safari or the Home Screen app may stop recording. Uploaded chunks remain safe."); };
+    const visibility = () => { if (active && document.hidden) setWarning("Leaving may stop recording. Uploaded audio is safe."); };
     const click = (event: MouseEvent) => {
       if (!active) return;
       const anchor = (event.target as Element | null)?.closest("a");
@@ -163,8 +163,8 @@ export function RecorderProvider({ children }: { children: React.ReactNode }) {
       const internalRoute = url.origin === window.location.origin && (/^\/$/.test(url.pathname) || /^\/archive\/?$/.test(url.pathname) || /^\/edition\//.test(url.pathname));
       if (internalRoute) return;
       event.preventDefault();
-      setWarning("This link leaves the reader. Your uploaded chunks are safe, but recording may stop if Safari suspends this app.");
-      if (window.confirm("Leave the reader while recording? Uploaded chunks are safe, but recording may stop.")) window.open(url.href, anchor.target || "_blank", "noopener,noreferrer");
+      setWarning("Leaving may stop recording. Uploaded audio is safe.");
+      if (window.confirm("Leave while recording?")) window.open(url.href, anchor.target || "_blank", "noopener,noreferrer");
     };
     window.addEventListener("beforeunload", beforeUnload);
     window.addEventListener("pagehide", pageHide);
@@ -175,7 +175,7 @@ export function RecorderProvider({ children }: { children: React.ReactNode }) {
 
   const start = async () => {
     if (!edition) return;
-    setPhase("starting"); setMessage("Waiting for microphone permission…");
+    setPhase("starting"); setMessage("Mic");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
       streamRef.current = stream;
@@ -202,54 +202,56 @@ export function RecorderProvider({ children }: { children: React.ReactNode }) {
         if (intentionalStopRef.current) return;
         streamRef.current?.getTracks().forEach((track) => track.stop());
         recorderRef.current = null; streamRef.current = null;
-        setPhase("interrupted"); setMessage("Recording stopped unexpectedly · Uploaded chunks are safe");
+        setPhase("interrupted"); setMessage("Stopped");
       };
       recorder.addEventListener("stop", unexpectedStop);
       recorder.start(10000);
-      setElapsed(0); setWarning(null); setPhase("recording"); setMessage("Recording · Every chunk uploaded safely");
+      setElapsed(0); setWarning(null); setPhase("recording"); setMessage("Saved");
     } catch (error) {
       streamRef.current?.getTracks().forEach((track) => track.stop());
-      setPhase("error"); setMessage(error instanceof Error ? error.message : "Microphone access was not available");
+      setPhase("error"); setMessage(error instanceof Error && error.message.includes("session") ? "Session failed" : "Mic unavailable");
     }
   };
 
   const finish = async () => {
     const recorder = recorderRef.current, meta = sessionRef.current;
     if (!recorder || !meta) return;
-    setPhase("finishing"); setMessage("Finishing and verifying every saved chunk…");
+    setPhase("finishing"); setMessage("Uploading");
     intentionalStopRef.current = true;
     const stopped = new Promise<void>((resolve) => recorder.addEventListener("stop", () => resolve(), { once: true }));
     recorder.stop(); await stopped; streamRef.current?.getTracks().forEach((track) => track.stop());
     if (dataTasksRef.current.size) await Promise.all([...dataTasksRef.current]);
     if (queueRef.current.length || uploadingRef.current) await new Promise<void>((resolve) => { finishResolverRef.current = resolve; void drainQueue(); });
     const response = await fetch(`/api/voice/sessions/${meta.id}/finish`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ durationMs: elapsed * 1000 }) });
-    if (!response.ok) { setPhase("error"); setMessage("Upload check failed. Keep this app open and try Finish again."); return; }
+    if (!response.ok) { setPhase("error"); setMessage("Retry Finish"); return; }
     recorderRef.current = null; streamRef.current = null; intentionalStopRef.current = false;
-    persistSession(null); setWarning(null); setPhase("waiting"); setMessage("Uploaded · Waiting for laptop ingestion");
+    persistSession(null); setWarning(null); setPhase("waiting"); setMessage("Pending");
   };
 
   const recover = async () => {
     const meta = sessionRef.current;
     if (!meta) return;
-    setPhase("finishing"); setMessage("Saving every recoverable chunk…");
+    setPhase("finishing"); setMessage("Uploading");
     queueRef.current = await loadChunks(meta.id); if (queueRef.current.length) await drainQueue();
     const response = await fetch(`/api/voice/sessions/${meta.id}/recover`, { method: "POST" });
-    if (!response.ok) { setPhase("error"); setMessage("Recovery is still pending. Keep this app open and try again."); return; }
-    persistSession(null); setWarning(null); setPhase("waiting"); setMessage("Recovered and uploaded · Waiting for laptop ingestion");
+    if (!response.ok) { setPhase("error"); setMessage("Retry Save"); return; }
+    persistSession(null); setWarning(null); setPhase("waiting"); setMessage("Pending");
   };
 
   const time = `${String(Math.floor(elapsed / 60)).padStart(2, "0")}:${String(elapsed % 60).padStart(2, "0")}`;
   const showDock = Boolean(edition) || phase !== "idle";
+  const status = phase === "recording" ? message : phase === "finishing" ? "Uploading" : phase === "waiting" ? "Pending" : phase === "ingested" ? "Ingested" : phase === "interrupted" ? "Interrupted" : phase === "error" ? "Error" : phase === "starting" ? "Mic" : "Ready";
+  const provenance = sessionMeta ? `${sessionMeta.deliveryDate} · ${sessionMeta.editionVersion}` : "";
   return <RecorderContext.Provider value={{ active }}>
     {children}
-    {warning && active ? <aside className="recording-warning" role="alert"><strong>Recording is still active.</strong> {warning}<button onClick={() => setWarning(null)} aria-label="Dismiss recording warning">Dismiss</button></aside> : null}
+    {warning && active ? <aside className="recording-warning" role="alert">{warning}<button onClick={() => setWarning(null)} aria-label="Dismiss recording warning">×</button></aside> : null}
     {showDock ? <div className="recorder-dock" role="region" aria-label="Daily voice memo"><div className="recorder">
       <span className={`record-dot ${active ? "live" : ""}`} aria-hidden="true" />
       {phase === "recording" ? <button className="record-button finish" onClick={finish}>Finish</button> :
         phase === "finishing" ? <button className="record-button" disabled>Saving…</button> :
-        phase === "interrupted" ? <button className="record-button recover" onClick={recover}>Save recovered memo</button> :
-        <button className="record-button" onClick={start} disabled={!edition || phase === "starting" || phase === "waiting" || phase === "ingested"}>Start reading / record</button>}
-      <div className="record-status" aria-live="polite"><strong>{active ? `Daily voice memo · ${sessionMeta?.deliveryDate} ${sessionMeta?.editionVersion}` : phase === "interrupted" ? "Interrupted memo recovered" : phase === "ingested" ? "Memo complete" : "Voice feedback"}</strong><span>{message}</span></div>
+        phase === "interrupted" ? <button className="record-button recover" onClick={recover}>Save</button> :
+        <button className="record-button" onClick={start} disabled={!edition || phase === "starting" || phase === "waiting" || phase === "ingested"} aria-label="Start daily voice memo">Record</button>}
+      <div className="record-status" aria-live="polite"><strong>{status}</strong>{provenance ? <span>{provenance}</span> : null}</div>
       <span className="timer" aria-label={`${elapsed} seconds elapsed`}>{time}</span>
     </div></div> : null}
   </RecorderContext.Provider>;

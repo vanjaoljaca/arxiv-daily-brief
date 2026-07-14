@@ -19,7 +19,7 @@ The repository now includes the working Sites reader product, not just the edito
 
 ## What a reading session feels like
 
-Open today's edition, tap **Start reading / record**, accept microphone access, and read normally. Scroll, open Archive, compare an older edition, and return: one authoritative recorder stays mounted above every internal route, so the red recording state, elapsed timer, and upload status remain visible everywhere. Tap **Finish** once and walk away.
+Open today's edition, tap **Record**, and read normally. Scroll, open Archive, compare an older edition, and return: one authoritative recorder stays mounted above every internal route, so its state and timer remain visible everywhere. Tap **Finish** once.
 
 The browser presents one logical memo. Internally, each media chunk is stored locally before upload and removed only after R2 confirms it. A network wobble therefore changes the status to “saved locally and reconnecting,” not “lost.” If Safari suspends or closes the document, the server can finalize the already-uploaded chunks as an interrupted but recoverable session.
 

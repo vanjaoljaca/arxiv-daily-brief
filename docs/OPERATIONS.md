@@ -27,3 +27,7 @@ The ingestion queue returns `apiRevision: voice-recovery-v2`. Recovery tooling s
 ## Separate feedback task
 
 The site/recovery process ends after it writes verified raw audio, `session.json`, `recovery-verification.json`, and `handoff.json`. A separate daily feedback task owns concatenation in numeric order, free local transcription, interpretation, private state updates, and a dated Feedback task. The following publisher consumes that processed state before ranking and opens with the exact heading **Follow-up from yesterday**.
+
+## Copy density
+
+Recurring UI uses terse labels: **Record**, **Recording**, **Uploading**, **Saved**, **Pending**, **Ingested**, and **Interrupted**. The edition date appears once; the Markdown H1 is suppressed as redundant framing. Publishers should normalize wrapper labels (`The one-minute overview` to `Overview`, `ELI5 idea` to `ELI5`) and remove obvious reading instructions while preserving substantive paper summaries. Apply the same rule to future source tabs such as Hacker News.
