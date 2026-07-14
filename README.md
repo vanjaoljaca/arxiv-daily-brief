@@ -1,55 +1,81 @@
 # arXiv Daily Brief
 
-**arXiv, rewritten in your language—with a conversation attached.**
+**arXiv, rewritten in your language—with an interactive, supportive reading loop attached.**
 
-Every morning, an LLM sweeps the complete new arXiv batch, filters it through what I care about and what I already know, then opens a dated chat containing the ideas worth thinking about. I can question the findings, ask for a gentler explanation, connect them to my own work, or follow an idea until I am ready for the paper itself.
+This project sweeps the complete daily arXiv announcement batch, filters it through a reader's interests and actual knowledge, and publishes a calm private edition that is comfortable to read on an iPad. It is arXiv-specific: the goal is not generic internet ingestion or avoiding papers. It is to make unfamiliar research discussable now, while building the foundations and questions that help a reader approach the papers themselves.
 
-The output is not a paper leaderboard or a pile of abstract summaries. It rewrites research in the language of my existing interests and gradually builds the missing foundations. Each selected paper has to tell me:
+The repository now includes the working Sites reader product, not just the editorial recipe. arXiv remains the core supported-reading workflow; an optional Hacker News surface adds a broader daily headline and discussion scan without mixing the two publication streams:
 
-- what the researchers actually learned;
-- what the relevant field should update its beliefs about;
-- why it connects to something I care about;
-- a useful question I can ask without reading the paper; and
-- what remains unproven.
+- a sign-in-gated, iPad-first reading app with first-class **arXiv** and **HN** tabs and separate archives;
+- immutable dated versions, so corrections never overwrite reading history;
+- one edition-level voice memo, visible at the top, that keeps recording across both tabs and internal navigation;
+- 10-second chunk uploads to private R2, with session/status metadata in D1;
+- local IndexedDB buffering for network wobble and visible interruption recovery;
+- leave-app warnings plus recoverable server-side finalization for abandoned sessions;
+- a protected laptop bridge for raw-audio download, hash verification, and acknowledgement;
+- no paid transcription dependency—transcription and interpretation happen locally in a separate feedback task.
 
-The chat is both the reading interface and the feedback interface. I can say “too much agent research,” “more education and language,” “explain that like I am new to the field,” “this connects to my visual testing idea,” or simply keep asking questions. Tomorrow’s brief incorporates that feedback and slowly updates a map of what I have already seen and understood.
+![ArXiv Daily Brief reader preview](reader/public/og.png)
 
-## Make your own
+## What a reading session feels like
 
-You do not need to install my exact stack. Give this repository to an LLM agent that can browse the web, write files, and schedule recurring work, then tell it to adapt the process to your environment:
+Open today's edition, tap **Record**, and read normally. Scroll, open Archive, compare an older edition, and return: one authoritative recorder stays mounted above every internal route, so its state and timer remain visible everywhere. Tap **Finish** once.
 
-> Set up this arXiv daily brief for me using the process in this repository. First interview me about my interests and current knowledge. Then create the persistent profile, feedback history, knowledge map, full-batch arXiv ingestion, daily synthesis, and a dated chat/task for each finished edition. Schedule it only after the fresh arXiv batch is available. Rewrite the research in language matched to my current understanding, let me explore it through conversation, and help me build toward the papers themselves. Keep processing out of the discussion chat.
+The browser presents one logical memo. Internally, each media chunk is stored locally before upload and removed only after R2 confirms it. A network wobble therefore changes the status to “saved locally and reconnecting,” not “lost.” If Safari suspends or closes the document, the server can finalize the already-uploaded chunks as an interrupted but recoverable session.
 
-For a more explicit handoff, use [INSTALL.md](INSTALL.md).
-
-## What the loop does
+## Architecture
 
 ```mermaid
 flowchart LR
-    A["Yesterday's discussion"] --> B["Taste + knowledge state"]
-    C["Complete daily arXiv batch"] --> D["Relevance and learning filter"]
-    B --> D
-    D --> E["Readable dated brief"]
-    E --> F["Questions and feedback"]
-    F --> A
+    A["Complete daily arXiv batch"] --> B["Profile + knowledge-aware ranking"]
+    B --> C["Versioned daily edition"]
+    C --> D["Private iPad reader"]
+    D --> E["One daily voice memo"]
+    E --> F["R2 audio chunks"]
+    E --> G["D1 session state"]
+    F --> H["Verified local audio inbox"]
+    G --> H
+    H --> I["Separate local feedback task"]
+    I --> B
 ```
 
-The complete sweep matters. Keyword alerts are good at finding more of what you already know how to name; this process can also notice adjacent work and explain why it might matter.
+The reader deliberately stops at the verified raw-audio handoff. A separate daily process owns local/free transcription, feedback interpretation, preference and knowledge updates, and any user-facing Feedback task. This keeps deployment code away from private interpretation state.
 
-## What mine looks for
+HN uses a parallel source path: official Firebase HN items → interest-aware ordering with a broad long tail → terse headline summaries and attributed Comment pulse bullets → selective Comment dives. HN has its own runs and publication cursor; it does not run inside the arXiv batch.
 
-My current mix includes education and learning science, language learning and linguistics, UX/HCI, programming and developer tools, AI systems with transferable product ideas, and exploratory work on embodiment, voice, and singing. The mix is public in [MY-FEED.md](MY-FEED.md), partly so the examples make sense and partly because it is interesting to compare filters.
+## Try your own instance
 
-## Example
+See [INSTALL.md](INSTALL.md) for the complete setup. The shortest route is:
 
-[The revised 2026-07-13 brief](examples/2026-07-13.md) is a useful failure-and-correction example. The first pass over-indexed on AI-agent papers. Feedback forced a complete rescan, which surfaced education experiments, cross-linguistic work, UX findings, testing research, and an embodied-sensing study instead.
+1. Copy `reader/` into a Sites-capable project.
+2. Generate a strong `SITES_INGESTION_SECRET` and store it only in Sites runtime configuration and your ignored laptop configuration.
+3. Set owner-only Sites access, build, and deploy.
+4. Publish versioned Markdown editions into `reader/generated/editions.ts` using the included catalogue shape.
+5. Run the protected downloader from a separate daily feedback process.
 
-## Current state
+The source contains a public sample catalogue only. It contains no owner email, private URL, authentication token, audio, feedback, personal preference state, or private edition text.
 
-- Complete daily arXiv ingestion: working
-- Personal filtering and beginner-friendly synthesis: working
-- Feedback and knowledge-state persistence: working
-- Dated conversational editions: working
-- More sources beyond arXiv: deliberately out of scope for now
+## Editorial contract
 
-This public repository is the portable recipe and a record of selected editions. My private instance contains the operational state and raw feedback history.
+Each chosen paper should explain:
+
+- what the researchers actually learned;
+- what the relevant field should update its beliefs about;
+- why it connects to this reader;
+- a useful question the reader can ask before reading the paper; and
+- what remains unproven.
+
+The complete sweep matters. Keyword alerts find more of what you already know how to name; this process can notice adjacent work and explain why it may matter. The next edition starts with **Follow-up from yesterday**, grounded in actual processed feedback rather than generic continuity filler.
+
+## Repository map
+
+- `reader/` — deployable Sites source for the private iPad reader and voice bridge.
+- `scripts/hn/` — official-API fetch, ranking draft, and edition assembly.
+- `scripts/publish-hn-content.mjs` — publishes completed versioned HN runs into the reader catalogue.
+- `scripts/download-voice-inbox.mjs` — protected, hash-verifying laptop downloader.
+- `docs/HN.md` — HN data contract, daily process, and scheduling boundary.
+- `docs/OPERATIONS.md` — storage, recovery, security, and feedback-task boundaries.
+- `examples/` — selected public edition excerpts.
+- `MY-FEED.md` — one public example of a reader filter.
+
+My private instance contains operational state, raw feedback, and audio; none of those artifacts belong in this public repository.

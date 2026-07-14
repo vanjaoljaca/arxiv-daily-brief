@@ -1,0 +1,9 @@
+reader/node_modules/
+reader/dist/
+reader/.next/
+reader/.vinext/
+reader/.wrangler/
+reader/.env.ingestion.local
+feedback/audio-inbox/
+runs/hn/*/raw/
+.DS_Store
